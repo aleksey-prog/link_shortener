@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "64feea65-e0df-4b1d-8c8a-6b0b14e41f6c",
+		"_postman_id": "455f6823-f77e-4946-99bb-9354c24e2ced",
 		"name": "test",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -43,7 +43,7 @@
 			"response": []
 		},
 		{
-			"name": "Get link",
+			"name": "Add link",
 			"request": {
 				"auth": {
 					"type": "basic",
@@ -80,11 +80,13 @@
 			"response": []
 		},
 		{
-			"name": "New Request",
+			"name": "Get link",
 			"request": {
 				"method": "GET",
 				"header": [],
-				"url": null
+				"url": {
+					"raw": ""
+				}
 			},
 			"response": []
 		}
