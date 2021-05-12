@@ -6,7 +6,7 @@
 	},
 	"item": [
 		{
-			"name": "Register",
+			"name": "Register user1",
 			"request": {
 				"auth": {
 					"type": "basic",
@@ -43,7 +43,7 @@
 			"response": []
 		},
 		{
-			"name": "Add link",
+			"name": "Add link user1",
 			"request": {
 				"auth": {
 					"type": "basic",
@@ -80,13 +80,58 @@
 			"response": []
 		},
 		{
-			"name": "Get link",
+			"name": "Get link user1",
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
 					"raw": ""
 				}
+			},
+			"response": []
+		},
+		{
+			"name": "Register user2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": null
+			},
+			"response": []
+		},
+		{
+			"name": "Add link user2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": null
+			},
+			"response": []
+		},
+		{
+			"name": "Get link user2",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": null
+			},
+			"response": []
+		},
+		{
+			"name": "Add link public",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": null
+			},
+			"response": []
+		},
+		{
+			"name": "Get link public",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": null
 			},
 			"response": []
 		}
