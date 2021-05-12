@@ -70,7 +70,7 @@ def url_redirect(link_id):
     if flag == 0:
         cur.execute('''SELECT password FROM users WHERE login = (?)''', (request.authorization['username'],))
         data1 = cur.fetchall()
-        if data1[0][0] == hashlib.sha256(request.authorization['password'].encode('utf-8')).hexdigest()\
+        if data1[0][0] == hashlib.sha256(request.authorization['password'].encode('utf-8')).hexdigest() \
                 and login == request.authorization['username']:
             cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
             con.commit()
@@ -91,6 +91,39 @@ def url_redirect(link_id):
         return redirect(link_redirect)
     con.commit()
     con.close()
+
+
+@app.route('/view_links', methods=['GET', 'POST'])
+def view_link():
+    con = sq.connect('links.db')
+    cur = con.cursor()
+    cur.execute('''SELECT password FROM users WHERE login = (?)''', (request.authorization['username'],))
+    data = cur.fetchall()
+    con.close()
+    if data[0][0] == hashlib.sha256(request.authorization['password'].encode('utf-8')).hexdigest():
+        con = sq.connect('links.db')
+        cur = con.cursor()
+        cur.execute('''SELECT link_source FROM links WHERE login = (?)''', (request.authorization['username'],))
+        data = cur.fetchall()
+        con.close()
+        for link in data:
+            print(link[0])
+
+
+@app.route('/delete_link', methods=['GET', 'POST'])
+def delete_link():
+    con = sq.connect('links.db')
+    cur = con.cursor()
+    cur.execute('''SELECT password FROM users WHERE login = (?)''', (request.authorization['username'],))
+    data = cur.fetchall()
+    con.close()
+    if data[0][0] == hashlib.sha256(request.authorization['password'].encode('utf-8')).hexdigest():
+        con = sq.connect('links.db')
+        cur = con.cursor()
+        cur.execute('''DELETE FROM links WHERE login = (?) AND link_source = (?)''',
+                    (request.authorization['username'], request.form['link'],))
+        con.commit()
+        con.close()
 
 
 if __name__ == '__main__':
