@@ -32,11 +32,6 @@ def login_check(username, user_password):
         return False
 
 
-@app.route('/')
-def hello_world():
-    return 'Hello World!'
-
-
 @app.route('/register', methods=['GET', 'POST'])
 def reg_user():
     con = sq.connect('links.db')
@@ -46,59 +41,77 @@ def reg_user():
         cur.execute('''INSERT INTO users (login, password) VALUES (?,?)''',
                     (request.authorization['username'], pass_hash.hexdigest(),))
         con.commit()
+        con.close()
+        return 'user registered'
     except sq.IntegrityError:
-        print('Пользователь уже зарегестрирован')
-
-    con.close()
+        con.close()
+        return 'user already exists'
 
 
 @app.route('/add_link', methods=['GET', 'POST'])
 def add_link():
     if login_check(request.authorization['username'], request.authorization['password']):
-        con = sq.connect('links.db')
-        cur = con.cursor()
-        cur.execute('''INSERT INTO links (login, link_source, link_short, flag) VALUES (?,?,?,?)''',
-                    (request.authorization['username'], request.form['link'], get_hash(request.form['link']),
-                     request.form['flag'],))
-        con.commit()
-        con.close()
-
-
-@app.route('/<link_id>')
-def url_redirect(link_id):
-    con = sq.connect('links.db')
-    cur = con.cursor()
-    cur.execute('''SELECT link_source, count, flag, login FROM links WHERE link_short = (?)''', (link_id,))
-    data = cur.fetchall()
-    link_redirect = data[0][0]
-    link_counter = data[0][1]
-    flag = data[0][2]
-    login = data[0][3]
-    con.close()
-    if flag == 0:
-        if login_check(request.authorization['username'], request.authorization['password'])\
-                and login == request.authorization['username']:
+        if 'custom' in request.form:
             con = sq.connect('links.db')
             cur = con.cursor()
+            cur.execute('''INSERT INTO links (login, link_source, link_short, flag) VALUES (?,?,?,?)''',
+                        (request.authorization['username'], request.form['link'], request.form['custom'],
+                         request.form['flag'],))
+            con.commit()
+            con.close()
+            return 'custom link added'
+        else:
+            con = sq.connect('links.db')
+            cur = con.cursor()
+            cur.execute('''INSERT INTO links (login, link_source, link_short, flag) VALUES (?,?,?,?)''',
+                        (request.authorization['username'], request.form['link'], get_hash(request.form['link']),
+                         request.form['flag'],))
+            con.commit()
+            con.close()
+            return 'hashed link added'
+
+
+@app.route('/<link_id>', methods=['GET', 'POST', 'DELETE'])
+def url_redirect(link_id):
+    if request.method == 'POST' or request.method == 'GET':
+        con = sq.connect('links.db')
+        cur = con.cursor()
+        cur.execute('''SELECT link_source, count, flag, login FROM links WHERE link_short = (?)''', (link_id,))
+        data = cur.fetchall()
+        link_redirect = data[0][0]
+        link_counter = data[0][1]
+        flag = data[0][2]
+        login = data[0][3]
+        if flag == 0:
+            if login_check(request.authorization['username'], request.authorization['password']) \
+                    and login == request.authorization['username']:
+                cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
+                con.commit()
+                con.close()
+                return redirect(link_redirect)
+        elif flag == 1:
+            if login_check(request.authorization['username'], request.authorization['password']):
+                cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
+                con.commit()
+                con.close()
+                return redirect(link_redirect)
+        elif flag == 2:
             cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
             con.commit()
             con.close()
             return redirect(link_redirect)
-    elif flag == 1:
+        con.commit()
+        con.close()
+        return 'access error'
+    elif request.method == 'DELETE':
         if login_check(request.authorization['username'], request.authorization['password']):
             con = sq.connect('links.db')
             cur = con.cursor()
-            cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
+            cur.execute('''DELETE FROM links WHERE login = (?) AND link_short = (?)''',
+                        (request.authorization['username'], link_id,))
             con.commit()
             con.close()
-            return redirect(link_redirect)
-    elif flag == 2:
-        con = sq.connect('links.db')
-        cur = con.cursor()
-        cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
-        con.commit()
-        con.close()
-        return redirect(link_redirect)
+            return 'link deleted'
 
 
 @app.route('/view_links', methods=['GET', 'POST'])
@@ -106,59 +119,20 @@ def view_link():
     if login_check(request.authorization['username'], request.authorization['password']):
         con = sq.connect('links.db')
         cur = con.cursor()
-        cur.execute('''SELECT link_source FROM links WHERE login = (?)''', (request.authorization['username'],))
+        cur.execute('''SELECT link_source, link_short, count FROM links WHERE login = (?)''',
+                    (request.authorization['username'],))
         data = cur.fetchall()
         con.close()
-        for link in data:
-            print(link[0])
-
-
-@app.route('/delete_link', methods=['GET', 'POST'])
-def delete_link():
-    if login_check(request.authorization['username'], request.authorization['password']):
-        con = sq.connect('links.db')
-        cur = con.cursor()
-        cur.execute('''DELETE FROM links WHERE login = (?) AND link_source = (?)''',
-                    (request.authorization['username'], request.form['link'],))
-        con.commit()
-        con.close()
-
-
-@app.route('/<user_name>/<link_id>')
-def get_link_username(user_name, link_id):
-    con = sq.connect('links.db')
-    cur = con.cursor()
-    cur.execute('''SELECT link_source, count, flag, login FROM links WHERE link_short = (?)''', (link_id,))
-    data = cur.fetchall()
-    link_redirect = data[0][0]
-    link_counter = data[0][1]
-    flag = data[0][2]
-    login = data[0][3]
-    con.close()
-    if flag == 0:
-        if login_check(request.authorization['username'], request.authorization['password']) \
-                and login == request.authorization['username']:
-            con = sq.connect('links.db')
-            cur = con.cursor()
-            cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
-            con.commit()
-            con.close()
-            return redirect(link_redirect)
-    elif flag == 1:
-        if login_check(request.authorization['username'], request.authorization['password']):
-            con = sq.connect('links.db')
-            cur = con.cursor()
-            cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
-            con.commit()
-            con.close()
-            return redirect(link_redirect)
-    elif flag == 2:
-        con = sq.connect('links.db')
-        cur = con.cursor()
-        cur.execute('''UPDATE links SET count = ? WHERE link_short = (?)''', (link_counter + 1, link_id,))
-        con.commit()
-        con.close()
-        return redirect(link_redirect)
+        links = []
+        for line in data:
+            entry = dict()
+            entry['source'] = line[0]
+            entry['short'] = line[1]
+            entry['counter'] = line[2]
+            links.append(entry)
+        links = tuple(links)
+        print(links)
+        return links
 
 
 if __name__ == '__main__':
