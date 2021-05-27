@@ -1,7 +1,7 @@
 import sqlite3 as sq
 import hashlib
 from base64 import urlsafe_b64encode
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, jsonify
 
 app = Flask(__name__)
 
@@ -71,9 +71,9 @@ def add_link():
             return 'hashed link added'
 
 
-@app.route('/<link_id>', methods=['GET', 'POST', 'DELETE'])
+@app.route('/<link_id>', methods=['GET', 'DELETE', 'PATCH'])
 def url_redirect(link_id):
-    if request.method == 'POST' or request.method == 'GET':
+    if request.method == 'GET':
         con = sq.connect('links.db')
         cur = con.cursor()
         cur.execute('''SELECT link_source, count, flag, login FROM links WHERE link_short = (?)''', (link_id,))
@@ -112,6 +112,29 @@ def url_redirect(link_id):
             con.commit()
             con.close()
             return 'link deleted'
+    elif request.method == 'PATCH':
+        if login_check(request.authorization['username'], request.authorization['password']):
+            con = sq.connect('links.db')
+            cur = con.cursor()
+            if 'custom' in request.form:
+                cur.execute('''UPDATE links SET link_short = ? WHERE login = (?) AND link_short = (?)''',
+                            (request.form['custom'], request.authorization['username'], link_id,))
+                con.commit()
+                con.close()
+            if 'flag' in request.form:
+                cur.execute('''UPDATE links SET flag = ? WHERE login = (?) AND link_short = (?)''',
+                            (request.form['flag'], request.authorization['username'], link_id,))
+                con.commit()
+                con.close()
+            if 'hash' in request.form:
+                cur.execute('''SELECT link_source FROM links WHERE link_short = (?)''', (link_id,))
+                data = cur.fetchall()
+                link_source = data[0][0]
+                cur.execute('''UPDATE links SET link_short = ? WHERE login = (?) AND link_short = (?)''',
+                            (get_hash(link_source), request.authorization['username'], link_id,))
+                con.commit()
+                con.close()
+            return 'link updated'
 
 
 @app.route('/view_links', methods=['GET', 'POST'])
@@ -130,9 +153,7 @@ def view_link():
             entry['short'] = line[1]
             entry['counter'] = line[2]
             links.append(entry)
-        links = tuple(links)
-        print(links)
-        return links
+        return jsonify(links)
 
 
 if __name__ == '__main__':
